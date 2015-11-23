@@ -11,67 +11,94 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
-        android:padding="10dp"
+        android:paddingBottom="5dp"
+        android:paddingLeft="20dp"
+        android:paddingTop="5dp"
         android:singleLine="true"
-        android:text="查询"
+        android:textColor="#000000"
+        android:textStyle="bold"
+        android:text="此处是彩蛋,红红火火,恍恍惚惚"
         android:textSize="20sp" />
 
 
 
 
-
-    <Button
-        android:id="@+id/btn_main"
-        android:layout_width="200dp"
-        android:layout_height="wrap_content"
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:id="@+id/lv_wrapButton"
         android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:layout_margin="0dp"
-        android:background="@color/material_blue_grey_800"
-        android:onClick="showOrHide"
-        android:text="收起" />
+        android:background="#FF104E8B"
+        android:orientation="horizontal">
+
+
+        <ImageButton
+            android:layout_width="100dp"
+            android:layout_height="48dp"
+            android:layout_alignParentBottom="true"
+            android:layout_margin="0dp"
+            android:background="#FF104E8B"
+            android:src="@drawable/setting"
+            android:padding="10dp"
+            android:onClick="setting"
+            android:scaleType="fitCenter"
+
+            />
+
+        <ImageButton
+            android:id="@+id/btn_main"
+            android:layout_width="200dp"
+            android:layout_centerHorizontal="true"
+            android:layout_alignParentBottom="true"
+            android:layout_height="48dp"
+            android:layout_margin="0dp"
+            android:onClick="showOrHide"
+            android:background="#01000000"
+            android:padding="10dp"
+
+            android:scaleType="fitCenter"
+            android:src="@drawable/hide"
+
+            />
+
+
+        <ImageButton
+            android:id="@+id/btn_del"
+            android:layout_width="100dp"
+            android:layout_height="48dp"
+            android:layout_margin="0dp"
+            android:layout_alignParentBottom="true"
+            android:layout_toRightOf="@id/btn_main"
+            android:background="#FF104E8B"
+            android:longClickable="true"
+            android:onClick="deleteNum"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/delete" />
+    </RelativeLayout>
+
 
     <ListView
         android:id="@+id/lv_main"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_above="@id/btn_main"
-        android:layout_below="@id/tv_main">
+        android:layout_above="@id/lv_wrapButton"
+        android:layout_below="@id/tv_main"
+        android:background="#501E90FF"
+        android:divider="#00000000"
+        android:dividerHeight="0dp">
 
     </ListView>
 
-    <Button
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_margin="0dp"
-        android:layout_toLeftOf="@id/btn_main"
-        android:background="@color/material_blue_grey_800"
 
-        android:text="设置"
 
-        />
-
-    <Button
-        android:id="@+id/btn_del"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_margin="0dp"
-        android:layout_toRightOf="@id/btn_main"
-        android:background="@color/material_blue_grey_800"
-        android:onClick="deleteNum"
-        android:longClickable="true"
-        android:text="删除"
-
-        />
 
 
     <cn.hachin.t9finder.ui.MyHorizontalScrollView
         android:id="@+id/hSv_main"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:layout_above="@id/btn_main">
+        android:layout_above="@id/lv_wrapButton">
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -82,6 +109,7 @@
                 android:layout_width="fill_parent"
                 android:layout_height="fill_parent"
                 android:layout_margin="0dp"
+                android:background="#A0104E8B"
                 android:gravity="center"
                 android:numColumns="5"
                 android:padding="0dp"

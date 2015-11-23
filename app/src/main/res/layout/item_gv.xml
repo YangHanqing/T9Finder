@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="70dp"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/tv_gv_num"
+        android:text="1"
+        android:gravity="center"
+        android:textSize="35sp"
+        android:textColor="#FFFFFF"
+        android:layout_weight="1"
+        android:layout_width="match_parent"
+        android:layout_height="50dp" />
+    <TextView
+        android:id="@+id/tv_gv_abc"
+        android:gravity="center"
+        android:text="abc"
+        android:textSize="18sp"
+        android:textColor="#FFFFFF"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+</LinearLayout>

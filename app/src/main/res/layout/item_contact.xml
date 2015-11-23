@@ -6,22 +6,23 @@
     android:padding="3dp">
 
     <TextView
+        android:layout_marginLeft="10dp"
         android:id="@+id/tv_ic_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:padding="2dp"
         android:text="诸葛孔明"
-        android:textColor="#4169E1"
+        android:textStyle="bold"
+        android:textColor="#1E1E1E"
         android:textSize="17sp" />
 
     <TextView
+        android:layout_marginLeft="10dp"
         android:id="@+id/tv_ic_phoneNum"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-
         android:padding="2dp"
-        android:text="13555251234"
-        android:textColor="#000000"
+        android:textColor="#000080"
         android:textSize="16sp" />
 
 </LinearLayout>

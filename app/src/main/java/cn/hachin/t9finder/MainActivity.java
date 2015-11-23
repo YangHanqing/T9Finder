@@ -5,23 +5,28 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.RotateAnimation;
+import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.GridView;
 import android.widget.HorizontalScrollView;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,17 +41,20 @@ import cn.hachin.t9finder.Entity.AppInfo;
 import cn.hachin.t9finder.tools.Tools;
 import cn.hachin.t9finder.ui.AppItemView;
 import cn.hachin.t9finder.ui.ContactItemView;
+import cn.hachin.t9finder.ui.GvItemView;
+import cn.hachin.t9finder.ui.GvPicItemView;
 import cn.hachin.t9finder.ui.MyHorizontalScrollView;
 
 public class MainActivity extends Activity {
     private static final String TAG = "MainActivity";
+    private static final int T9HEIGHT = 210;
     GridView t9View;
     ListView listView;
-    Button btnUpDown;
-    Button btnDel;
+    ImageButton btnUpDown;
+    ImageButton btnDel;
     TextView tvSearchBox;
-    TextView tv5;
-    TextView tv9;
+    GvPicItemView gvPicItemView5;
+    GvPicItemView gvPicItemView9;
     RelativeLayout relativeLayout;
     Map<String, String> mapContact;
     Map<String, String> mapContact2 = new HashMap<>();
@@ -76,6 +84,8 @@ public class MainActivity extends Activity {
                     isFirst = false;
                     setListView();
                     break;
+                case 3:
+                    t9View.setVisibility(View.GONE);
             }
         }
     };
@@ -106,11 +116,25 @@ public class MainActivity extends Activity {
         t9View = (GridView) findViewById(R.id.gv_main);
         listView = (ListView) findViewById(R.id.lv_main);
         tvSearchBox = (TextView) findViewById(R.id.tv_main);
-        btnDel = (Button) findViewById(R.id.btn_del);
+        btnDel = (ImageButton) findViewById(R.id.btn_del);
         relativeLayout = (RelativeLayout) findViewById(R.id.rl_main);
-        btnUpDown = (Button) findViewById(R.id.btn_main);
+        btnUpDown = (ImageButton) findViewById(R.id.btn_main);
         horizontalScrollView = (MyHorizontalScrollView) findViewById(R.id.hSv_main);
         horizontalScrollView.setHorizontalScrollBarEnabled(false);// 隐藏滚动条
+
+        listView.setOnScrollListener(new AbsListView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(AbsListView view, int scrollState) {
+                if (isGvOpen) {
+                    showOrHide(t9View);
+                }
+            }
+
+            @Override
+            public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+
+            }
+        });
 
         //初始化App数据
         new Thread(new Runnable() {
@@ -206,18 +230,59 @@ public class MainActivity extends Activity {
      * @param v
      */
     public void showOrHide(View v) {
-        ObjectAnimator ta = null;
+        ObjectAnimator ta;
+        final RotateAnimation animation;
+
         if (isGvOpen) {
             isGvOpen = false;
-            ta = ObjectAnimator.ofFloat(horizontalScrollView, "translationY", 0, Tools.dp2px(this, 210));
+            ta = ObjectAnimator.ofFloat(horizontalScrollView, "translationY", 0, Tools.dp2px(this, T9HEIGHT));
+            ta.setDuration(300);
+            ta.setRepeatCount(0);
+            ta.start();
+
+
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(300);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    Message msg = new Message();
+                    msg.what = 3;
+                    handler.sendMessage(msg);
+                }
+            }).start();
+
         } else {
+            t9View.setVisibility(View.VISIBLE);
             isGvOpen = true;
-            ta = ObjectAnimator.ofFloat(horizontalScrollView, "translationY", Tools.dp2px(this, 210), 0);
+            ta = ObjectAnimator.ofFloat(horizontalScrollView, "translationY", Tools.dp2px(this, T9HEIGHT), 0);
+            ta.setDuration(300);
+            ta.setRepeatCount(0);
+            ta.start();
+
         }
-        ta.setDuration(100);
-        ta.setRepeatCount(0);
-        ta.start();
+
+//        animation = new RotateAnimation(0f,180f, Animation.RELATIVE_TO_SELF,
+//                0.5f,Animation.RELATIVE_TO_SELF,0.5f);
+//        animation.setDuration(500);//设置动画持续时间
+//        animation.setFillAfter(true);//动画执行完后是否停留在执行完的状态
+//        btnUpDown.setAnimation(animation);
+//        animation.start();
+
     }
+
+    /**
+     * setting按钮
+     *
+     * @param v
+     */
+    public void setting(View v) {
+        Toast.makeText(MainActivity.this, "测试版本,么么哒", Toast.LENGTH_SHORT).show();
+    }
+
 
     /**
      * 删除按钮
@@ -240,12 +305,18 @@ public class MainActivity extends Activity {
     private void switchAppOrContact() {
         if (isApp) {
             isApp = false;
-            tv5.setText("APP");
-            tv9.setText("APP");
+            gvPicItemView5.setTvAbc("APP");
+            gvPicItemView9.setTvAbc("APP");
+            gvPicItemView5.setIvPic(R.drawable.turn2);
+            gvPicItemView9.setIvPic(R.drawable.turn2);
+
         } else {
             isApp = true;
-            tv5.setText("联系人");
-            tv9.setText("联系人");
+            gvPicItemView5.setTvAbc("联系人");
+            gvPicItemView9.setTvAbc("联系人");
+            gvPicItemView5.setIvPic(R.drawable.turn);
+            gvPicItemView9.setIvPic(R.drawable.turn);
+
         }
         clearSearchBox();
         setListView();//切换模式后 重新布局
@@ -270,7 +341,7 @@ public class MainActivity extends Activity {
             for (AppInfo appInfo : appSet2) {
                 String appName = (appInfo.appName).trim();
                 String[] pinyin = Tools.hz2py(appName);
-                if (!pinyin[0].contains(searchBoxNum.toString()) && !pinyin[0].startsWith(searchBoxNum.toString()) && !pinyin[1].startsWith(searchBoxNum.toString())) {
+                if (!pinyin[1].contains(searchBoxNum.toString()) && !pinyin[0].contains(searchBoxNum.toString())) {
                     alarmDelete.add(appInfo);
                 }
             }
@@ -286,7 +357,7 @@ public class MainActivity extends Activity {
             for (String phoneNum : set) {
                 String name = mapContact2.get(phoneNum);
                 String[] pinyin = Tools.hz2py(name);
-                if (!pinyin[0].startsWith(searchBoxNum.toString()) && !pinyin[1].startsWith(searchBoxNum.toString())) {
+                if (!pinyin[1].contains(searchBoxNum.toString()) && !pinyin[0].contains(searchBoxNum.toString())) {
                     alarmDelete.add(phoneNum);
                 }
 
@@ -300,6 +371,7 @@ public class MainActivity extends Activity {
 
     /**
      * 切换左右手模式
+     *
      * @param position
      */
     public void ChangeRightToLeft(int position) {
@@ -440,6 +512,7 @@ public class MainActivity extends Activity {
      */
     public class MyGridViewAdapter extends BaseAdapter {
         String[] name = new String[]{"切换", "1", "2", "3", "切换", "联系人", "4", "5", "6", "联系人", "网页", "7", "8", "9", "网页"};
+        String[] name2 = new String[]{"切换", "测试版", "ABC", "DEF", "切换", "联系人", "GHI", "JKL", "MNO", "联系人", "网页", "PQRS", "TUV", "WXYZ", "网页"};
 
 
         @Override
@@ -459,24 +532,48 @@ public class MainActivity extends Activity {
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            if (position == 5) {
-                tv5 = new TextView(MainActivity.this);
-                tv5.setBackgroundColor(Color.GREEN);
-                tv5.setText(name[position]);
-                tv5.setHeight(Tools.dp2px(MainActivity.this, 70));
-                return tv5;
-            } else if (position == 9) {
-                tv9 = new TextView(MainActivity.this);
-                tv9.setBackgroundColor(Color.GREEN);
-                tv9.setText(name[position]);
-                tv9.setHeight(Tools.dp2px(MainActivity.this, 70));
-                return tv9;
-            } else {
-                TextView tv = new TextView(MainActivity.this);
-                tv.setBackgroundColor(Color.GREEN);
-                tv.setText(name[position]);
-                tv.setHeight(Tools.dp2px(MainActivity.this, 70));
-                return tv;
+            GvPicItemView gvPicItemView;
+
+            switch (position) {
+                case 0://左右切换按钮
+                    gvPicItemView = new GvPicItemView(MainActivity.this);
+                    gvPicItemView.setTvAbc(name2[position]);
+                    gvPicItemView.setIvPic(R.drawable.left2right);
+                    return gvPicItemView;
+                case 4:
+                    gvPicItemView = new GvPicItemView(MainActivity.this);
+                    gvPicItemView.setTvAbc(name2[position]);
+                    gvPicItemView.setIvPic(R.drawable.left2right);
+                    return gvPicItemView;
+                case 5://app 联系人切换按钮
+                    gvPicItemView5 = new GvPicItemView(MainActivity.this);
+                    gvPicItemView5.setTvAbc(name2[position]);
+                    gvPicItemView5.setIvPic(R.drawable.turn);
+                    return gvPicItemView5;
+                case 9:
+                    gvPicItemView9 = new GvPicItemView(MainActivity.this);
+                    gvPicItemView9.setTvAbc(name2[position]);
+                    gvPicItemView9.setIvPic(R.drawable.turn);
+                    return gvPicItemView9;
+
+                case 10://启动浏览器按钮
+                    gvPicItemView = new GvPicItemView(MainActivity.this);
+                    gvPicItemView.setTvAbc(name2[position]);
+                    gvPicItemView.setIvPic(R.drawable.web);
+
+                    return gvPicItemView;
+                case 14:
+                    gvPicItemView = new GvPicItemView(MainActivity.this);
+                    gvPicItemView.setTvAbc(name2[position]);
+                    gvPicItemView.setIvPic(R.drawable.web);
+
+                    return gvPicItemView;
+                default:
+                    GvItemView gvItemView = new GvItemView(MainActivity.this);
+                    gvItemView.setTvNum(name[position]);
+                    gvItemView.setTvAbc(name2[position]);
+                    return gvItemView;
+
             }
         }
     }
@@ -525,6 +622,7 @@ public class MainActivity extends Activity {
                     switchAppOrContact();
                     break;
                 case 10:
+                    startExploer();
                     break;
                 case 11:
                     searchBoxNum.append("7");
@@ -539,10 +637,19 @@ public class MainActivity extends Activity {
                     updateListView();
                     break;
                 case 14:
+                    startExploer();
                     break;
             }
 
         }
+    }
+
+    private void startExploer() {
+        Intent intent = new Intent();
+        intent.setAction("android.intent.action.VIEW");
+        Uri url = Uri.parse("http://");
+        intent.setData(url);
+        startActivity(intent);
     }
 
 }
