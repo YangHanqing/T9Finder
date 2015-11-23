@@ -2,17 +2,15 @@ package cn.hachin.t9finder;
 
 import android.animation.ObjectAnimator;
 import android.app.Activity;
-import android.content.ContentResolver;
 import android.content.Intent;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -24,16 +22,16 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import cn.hachin.t9finder.Engine.AppInfoProvider;
+import cn.hachin.t9finder.Engine.ContactInfoProvider;
 import cn.hachin.t9finder.Entity.AppInfo;
 import cn.hachin.t9finder.tools.Tools;
 import cn.hachin.t9finder.ui.AppItemView;
@@ -42,75 +40,118 @@ import cn.hachin.t9finder.ui.MyHorizontalScrollView;
 
 public class MainActivity extends Activity {
     private static final String TAG = "MainActivity";
-    GridView gvMain;
-    ListView lvMain;
-    Button btnMain;
+    GridView t9View;
+    ListView listView;
+    Button btnUpDown;
     Button btnDel;
-    TextView tvMain;
+    TextView tvSearchBox;
     TextView tv5;
     TextView tv9;
     RelativeLayout relativeLayout;
-    Map<String, String> map;
-    Map<String, String> map2 = new HashMap<>();
-    // List<AppInfo> appList;
-//    List<AppInfo> appList2 = new ArrayList<>();
-    Set<AppInfo> appList;
-    Set<AppInfo> appList2 = new HashSet<>();
-    MyLvAdapter lvAdapter;
+    Map<String, String> mapContact;
+    Map<String, String> mapContact2 = new HashMap<>();
+    Set<AppInfo> appSet;
+    Set<AppInfo> appSet2 = new HashSet<>();
+    MyContactAdapter contactAdapter;
     MyAppAdapter appAdapter;
     MyHorizontalScrollView horizontalScrollView;
-    StringBuffer queryNum = new StringBuffer();
-    boolean up_down = true;//初始化T9键盘为打开状态
+    List<PackageInfo> packages;
+    PackageManager pm;
+    StringBuffer searchBoxNum = new StringBuffer();
+    boolean isGvOpen = true;//初始化T9键盘为打开状态
     boolean isApp = true;
+    boolean isFirst = true;
     int width;     // 屏幕宽度（像素）
 
+    private Handler handler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            switch (msg.what) {
+                case 0:
+                    mapContact2.putAll(mapContact);//深拷贝联系人数据
+                    break;
+                case 1:
+                    appSet2.addAll(appSet);//深拷贝App数据
+                    isFirst = false;
+                    setListView();
+                    break;
+            }
+        }
+    };
+
+    /**
+     * 当第一次启动或者再次回来App时
+     */
     @Override
     protected void onStart() {
         super.onStart();
-        tvMain.setText("");
-        queryNum = new StringBuffer();
-
-        map2.putAll(map);//深拷贝
-        appList2.addAll(appList);
-
-        setListView();
-
-
+        clearSearchBox();
+        if (!isFirst) {//如果数据已经初始化完毕 不是第一次启动
+            appSet2.addAll(appSet);//深拷贝App数据
+            mapContact2.putAll(mapContact);//深拷贝联系人数据
+            setListView();//重新设置布局
+        }
     }
 
+    /**
+     * 启动程序时 初始化数据
+     *
+     * @param savedInstanceState
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        gvMain = (GridView) findViewById(R.id.gv_main);
-        lvMain = (ListView) findViewById(R.id.lv_main);
-        tvMain = (TextView) findViewById(R.id.tv_main);
+        t9View = (GridView) findViewById(R.id.gv_main);
+        listView = (ListView) findViewById(R.id.lv_main);
+        tvSearchBox = (TextView) findViewById(R.id.tv_main);
         btnDel = (Button) findViewById(R.id.btn_del);
         relativeLayout = (RelativeLayout) findViewById(R.id.rl_main);
-        btnMain = (Button) findViewById(R.id.btn_main);
+        btnUpDown = (Button) findViewById(R.id.btn_main);
         horizontalScrollView = (MyHorizontalScrollView) findViewById(R.id.hSv_main);
         horizontalScrollView.setHorizontalScrollBarEnabled(false);// 隐藏滚动条
 
+        //初始化App数据
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    mapContact = ContactInfoProvider.GetContact(MainActivity.this);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
 
-        try {
-            map = GetContact();
+                Message msg = new Message();
+                msg.what = 0;
+                handler.sendMessage(msg);
+            }
+        }).start();
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        //初始化联系人数据
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Message msg = new Message();
+                msg.what = 1;
+                pm = AppInfoProvider.getPm(MainActivity.this);
+                packages = AppInfoProvider.getPackages();
+                appSet = AppInfoProvider.getAppList();
+                handler.sendMessage(msg);
+            }
+        }).start();
 
-        appList = getAppList();
-
+        //设置T9布局
         setGridView();
 
+        //Del按钮的常按事件
         btnDel.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
 
-                queryNum = new StringBuffer();
-                tvMain.setText(queryNum);
-                map2.putAll(map);//深拷贝
-                appList2.addAll(appList);
+                clearSearchBox();
+                mapContact2.putAll(mapContact);//深拷贝
+                appSet2.addAll(appSet);
                 updateListView();
 
 
@@ -119,39 +160,45 @@ public class MainActivity extends Activity {
         });
     }
 
-
-    private void setListView() {
-        if (isApp) {
-            appAdapter = new MyAppAdapter();
-            lvMain.setAdapter(appAdapter);
-            lvMain.setOnItemClickListener(new MyContactItemListener());
-
-        } else {
-            lvAdapter = new MyLvAdapter();
-            lvMain.setAdapter(lvAdapter);
-            lvMain.setOnItemClickListener(new MyListViewItemListener());
-        }
-
-    }
-
+    /**
+     * 设置T9布局
+     */
     private void setGridView() {
         DisplayMetrics dm = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(dm);
         width = dm.widthPixels;         //获取屏幕宽度px
         int itemWidth = width / 4;  //GridView列宽
-        int gridviewWidth = itemWidth * 5;  //GirdView宽度
+        int gridViewWidth = itemWidth * 5;  //GirdView宽度
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                gridviewWidth, LinearLayout.LayoutParams.FILL_PARENT);
-        gvMain.setLayoutParams(params); // 设置GirdView布局参数,横向布局的关键
-        gvMain.setColumnWidth(itemWidth); // 设置列表项宽
-        //设置布局
+                gridViewWidth, LinearLayout.LayoutParams.FILL_PARENT);
+        t9View.setLayoutParams(params); // 设置GirdView布局参数,横向布局的关键
+        t9View.setColumnWidth(itemWidth); // 设置列表项宽
+
+        //设置布局内容
         MyGridViewAdapter gvAdapter = new MyGridViewAdapter();
-        gvMain.setAdapter(gvAdapter);
+        t9View.setAdapter(gvAdapter);
         //设置按钮事件
-        gvMain.setOnItemClickListener(new MyGridViewItemListener());
+        t9View.setOnItemClickListener(new MyGridViewItemListener());
 
     }
+
+    /**
+     * 设置ListView布局
+     */
+    private void setListView() {
+        if (isApp) {//如果是app
+            appAdapter = new MyAppAdapter();
+            listView.setAdapter(appAdapter);
+            listView.setOnItemClickListener(new MyAppItemListener());
+        } else {
+            contactAdapter = new MyContactAdapter();
+            listView.setAdapter(contactAdapter);
+            listView.setOnItemClickListener(new MyContactItemListener());
+        }
+
+    }
+
 
     /**
      * 底部按钮 收起打开
@@ -159,155 +206,102 @@ public class MainActivity extends Activity {
      * @param v
      */
     public void showOrHide(View v) {
-
         ObjectAnimator ta = null;
-
-        if (up_down) {
-            up_down = false;
+        if (isGvOpen) {
+            isGvOpen = false;
             ta = ObjectAnimator.ofFloat(horizontalScrollView, "translationY", 0, Tools.dp2px(this, 210));
         } else {
-            up_down = true;
+            isGvOpen = true;
             ta = ObjectAnimator.ofFloat(horizontalScrollView, "translationY", Tools.dp2px(this, 210), 0);
         }
         ta.setDuration(100);
         ta.setRepeatCount(0);
-
         ta.start();
     }
 
+    /**
+     * 删除按钮
+     *
+     * @param v
+     */
     public void deleteNum(View v) {
-        if (queryNum.length() == 0)
+        if (searchBoxNum.length() == 0)
             return;
-        queryNum.deleteCharAt(queryNum.length() - 1);
-        tvMain.setText(queryNum);
-        map2.putAll(map);//深拷贝
-        appList2.addAll(appList);
+        searchBoxNum.deleteCharAt(searchBoxNum.length() - 1);
+        tvSearchBox.setText(searchBoxNum);
+        mapContact2.putAll(mapContact);//深拷贝
+        appSet2.addAll(appSet);
         updateListView();
     }
 
     /**
-     * T9布局按钮响应事件
+     * 模式切换按钮
      */
-    private class MyGridViewItemListener implements AdapterView.OnItemClickListener {
-        @Override
-        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-            switch (position) {
-                case 0:
-                    ChangeRightToLeft(position);
-                    return;
-                case 1:
-                    queryNum.append("1");
-                    updateListView();
-                    break;
-                case 2:
-                    queryNum.append("2");
-                    updateListView();
-                    break;
-                case 3:
-                    queryNum.append("3");
-                    updateListView();
-                    break;
-                case 4:
-                    ChangeRightToLeft(position);
-                    return;
-                case 5:
-                    setAppOrContactMode();
-                    break;
-                case 6:
-                    queryNum.append("4");
-                    updateListView();
-                    break;
-                case 7:
-                    queryNum.append("5");
-                    updateListView();
-                    break;
-                case 8:
-                    queryNum.append("6");
-                    updateListView();
-                    break;
-                case 9:
-                    setAppOrContactMode();
-                    break;
-                case 10:
-                    break;
-                case 11:
-                    queryNum.append("7");
-                    updateListView();
-                    break;
-                case 12:
-                    queryNum.append("8");
-                    updateListView();
-                    break;
-                case 13:
-                    queryNum.append("9");
-                    updateListView();
-                    break;
-                case 14:
-                    break;
-            }
-
-        }
-    }
-
-    private void setAppOrContactMode() {
-        if(isApp){
-            isApp=false;
+    private void switchAppOrContact() {
+        if (isApp) {
+            isApp = false;
             tv5.setText("APP");
             tv9.setText("APP");
-            setListView();
-        }else
-        {
-            isApp=true;
+        } else {
+            isApp = true;
             tv5.setText("联系人");
             tv9.setText("联系人");
-
         }
-        setListView();
+        clearSearchBox();
+        setListView();//切换模式后 重新布局
     }
 
-    private void updateListView() {
-        tvMain.setText(queryNum.toString());
+    /**
+     * 清空搜索框
+     */
+    private void clearSearchBox() {
+        searchBoxNum = new StringBuffer();
+        tvSearchBox.setText(searchBoxNum);
+    }
 
+    /**
+     * 根据搜索的内容更新ListView
+     */
+    private void updateListView() {
+        tvSearchBox.setText(searchBoxNum.toString());
 
         if (isApp) {
             List<AppInfo> alarmDelete = new ArrayList<>();
-            for (AppInfo appInfo : appList2) {
+            for (AppInfo appInfo : appSet2) {
                 String appName = (appInfo.appName).trim();
                 String[] pinyin = Tools.hz2py(appName);
-                if (!pinyin[0].contains(queryNum.toString())&&!pinyin[0].startsWith(queryNum.toString()) && !pinyin[1].startsWith(queryNum.toString())) {
+                if (!pinyin[0].contains(searchBoxNum.toString()) && !pinyin[0].startsWith(searchBoxNum.toString()) && !pinyin[1].startsWith(searchBoxNum.toString())) {
                     alarmDelete.add(appInfo);
                 }
             }
 
             for (AppInfo a : alarmDelete) {
-                appList2.remove(a);
+                appSet2.remove(a);
             }
-            for (AppInfo appInfo : appList2) {
-                Log.i(TAG, appInfo.appName);
-            }
-            Log.i(TAG, "-----");
-
             appAdapter.notifyDataSetChanged();
 
         } else { //处理map2
             List<String> alarmDelete = new ArrayList<String>();
-
-            Set<String> set = map2.keySet();
+            Set<String> set = mapContact2.keySet();
             for (String phoneNum : set) {
-                String name = map2.get(phoneNum);
+                String name = mapContact2.get(phoneNum);
                 String[] pinyin = Tools.hz2py(name);
-                if (!pinyin[0].startsWith(queryNum.toString()) && !pinyin[1].startsWith(queryNum.toString())) {
+                if (!pinyin[0].startsWith(searchBoxNum.toString()) && !pinyin[1].startsWith(searchBoxNum.toString())) {
                     alarmDelete.add(phoneNum);
                 }
 
             }
             for (String s : alarmDelete) {
-                map2.remove(s);
+                mapContact2.remove(s);
             }
-            lvAdapter.notifyDataSetChanged();
+            contactAdapter.notifyDataSetChanged();
         }
     }
 
+    /**
+     * 切换左右手模式
+     * @param position
+     */
     public void ChangeRightToLeft(int position) {
         if (position == 0) {//左边按钮
             horizontalScrollView.fullScroll(HorizontalScrollView.FOCUS_RIGHT);//滚动到右边
@@ -315,19 +309,16 @@ public class MainActivity extends Activity {
             horizontalScrollView.fullScroll(HorizontalScrollView.FOCUS_LEFT);//滚动到左边
 
         }
-
-
     }
 
     /**
-     * listView适配器
+     * 联系人适配器
      */
-
-    private class MyLvAdapter extends BaseAdapter {
+    private class MyContactAdapter extends BaseAdapter {
 
         @Override
         public int getCount() {
-            return map2.size();
+            return mapContact2.size();
         }
 
         @Override
@@ -350,11 +341,11 @@ public class MainActivity extends Activity {
                 view = (ContactItemView) convertView;
             }
 
-            Set<String> set = map2.keySet();
+            Set<String> set = mapContact2.keySet();
             int flag = 0;
             for (String phoneNum : set) {
                 if (flag == position) {
-                    String name = map2.get(phoneNum);
+                    String name = mapContact2.get(phoneNum);
                     view.setContentPhoneNum(phoneNum);
                     view.setContentName(name);
 
@@ -367,24 +358,71 @@ public class MainActivity extends Activity {
         }
     }
 
-    private class MyListViewItemListener implements AdapterView.OnItemClickListener {
+    /**
+     * 联系人按钮点击事件
+     */
+    private class MyContactItemListener implements AdapterView.OnItemClickListener {
         @Override
         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-            String phoneNum=((ContactItemView)view).getContentPhoneNum();
+            String phoneNum = ((ContactItemView) view).getContentPhoneNum();
             Intent intent = new Intent();
             intent.setAction("android.intent.action.CALL");
-            intent.setData(Uri.parse("tel:"+ phoneNum));
+            intent.setData(Uri.parse("tel:" + phoneNum));
             startActivity(intent);
         }
     }
 
     /**
-     * 联系人Item 按钮点击事件
+     * app适配器
      */
-    private class MyContactItemListener implements AdapterView.OnItemClickListener {
+    private class MyAppAdapter extends BaseAdapter {
+
+        @Override
+        public int getCount() {
+            return appSet2.size();
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return null;
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return 0;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            AppItemView view;
+            if (convertView == null) {
+                view = new AppItemView(MainActivity.this);
+            } else {
+                view = (AppItemView) convertView;
+            }
+
+            int flag = 0;
+            for (AppInfo app : appSet2) {
+                if (flag == position) {
+                    view.setAppName(app.appName);
+                    view.setIvAppIcon(packages.get(app.location).applicationInfo.loadIcon(pm));
+                    break;
+                } else {
+                    flag++;
+                }
+            }
+
+            return view;
+        }
+    }
+
+    /**
+     * app按钮点击事件
+     */
+    private class MyAppItemListener implements AdapterView.OnItemClickListener {
         @Override
         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-            for (AppInfo a : appList2) {
+            for (AppInfo a : appSet2) {
                 if (((AppItemView) view).getAppName().equals(a.appName)) {
                     Intent intent = a.appIntent;
                     startActivity(intent);
@@ -396,41 +434,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    /**
-     * 查询所有联系人的姓名，电话，邮箱
-     *
-     * @return
-     * @throws Exception
-     */
-    public Map<String, String> GetContact() throws Exception {
-        Map<String, String> map = new HashMap<>();
-
-        Uri uri = Uri.parse("content://com.android.contacts/contacts");
-        ContentResolver resolver = this.getContentResolver();
-        Cursor cursor = resolver.query(uri, new String[]{"_id"}, null, null, null);
-        //获取一行数据
-        while (cursor.moveToNext()) {
-
-            String name = null;//姓名
-
-            int contractID = cursor.getInt(0);
-            uri = Uri.parse("content://com.android.contacts/contacts/" + contractID + "/data");
-            Cursor cursor1 = resolver.query(uri, new String[]{"mimetype", "data1", "data2"}, null, null, null);
-            //获取每一列的数据
-            while (cursor1.moveToNext()) {
-                String data1 = cursor1.getString(cursor1.getColumnIndex("data1"));
-                String mimeType = cursor1.getString(cursor1.getColumnIndex("mimetype"));
-                if ("vnd.android.cursor.item/name".equals(mimeType)) { //姓名列
-                    name = data1; //获取姓名
-                } else if ("vnd.android.cursor.item/phone_v2".equals(mimeType)) { //手机列
-                    map.put(data1, name);    //添加 手机号 姓名
-                }
-            }
-            cursor1.close();
-        }
-        cursor.close();
-        return map;
-    }
 
     /**
      * T9键盘布局
@@ -479,75 +482,67 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * 获取应用列表
-     *
-     * @return
+     * T9布局按钮响应事件
      */
-    private Set<AppInfo> getAppList() {
-        PackageManager pm = this.getPackageManager();
-        // Return a List of all packages that are installed on the device.
-        List<PackageInfo> packages = pm.getInstalledPackages(0);
-        Set<AppInfo> appList;
-        appList = new HashSet<>();
-        for (PackageInfo packageInfo : packages) {
-            // 判断系统/非系统应用
-            if ((packageInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0) // 非系统应用
-            {
-                AppInfo info = new AppInfo();
-                info.appName = packageInfo.applicationInfo.loadLabel(pm)
-                        .toString().trim();
-                info.pkgName = packageInfo.packageName;
-                info.appIcon = packageInfo.applicationInfo.loadIcon(pm);
-                // 获取该应用安装包的Intent，用于启动该应用
-                info.appIntent = pm.getLaunchIntentForPackage(packageInfo.packageName);
-
-                appList.add(info);
-            } else {
-                // 系统应用　　　　　　　　
-            }
-
-        }
-        return appList;
-    }
-
-    private class MyAppAdapter extends BaseAdapter {
-
+    private class MyGridViewItemListener implements AdapterView.OnItemClickListener {
         @Override
-        public int getCount() {
-            return appList2.size();
-        }
-
-        @Override
-        public Object getItem(int position) {
-            return null;
-        }
-
-        @Override
-        public long getItemId(int position) {
-            return 0;
-        }
-
-        @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
-            AppItemView view;
-            if (convertView == null) {
-                view = new AppItemView(MainActivity.this);
-            } else {
-                view = (AppItemView) convertView;
-            }
-
-            int flag = 0;
-            for (AppInfo app : appList2) {
-                if (flag == position) {
-                    view.setAppName(app.appName);
-                    view.setIvAppIcon(app.appIcon);
+        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+            switch (position) {
+                case 0:
+                    ChangeRightToLeft(position);
+                    return;
+                case 1:
+                    searchBoxNum.append("1");
+                    updateListView();
                     break;
-                } else {
-                    flag++;
-                }
+                case 2:
+                    searchBoxNum.append("2");
+                    updateListView();
+                    break;
+                case 3:
+                    searchBoxNum.append("3");
+                    updateListView();
+                    break;
+                case 4:
+                    ChangeRightToLeft(position);
+                    return;
+                case 5:
+                    switchAppOrContact();
+                    break;
+                case 6:
+                    searchBoxNum.append("4");
+                    updateListView();
+                    break;
+                case 7:
+                    searchBoxNum.append("5");
+                    updateListView();
+                    break;
+                case 8:
+                    searchBoxNum.append("6");
+                    updateListView();
+                    break;
+                case 9:
+                    switchAppOrContact();
+                    break;
+                case 10:
+                    break;
+                case 11:
+                    searchBoxNum.append("7");
+                    updateListView();
+                    break;
+                case 12:
+                    searchBoxNum.append("8");
+                    updateListView();
+                    break;
+                case 13:
+                    searchBoxNum.append("9");
+                    updateListView();
+                    break;
+                case 14:
+                    break;
             }
 
-            return view;
         }
     }
+
 }

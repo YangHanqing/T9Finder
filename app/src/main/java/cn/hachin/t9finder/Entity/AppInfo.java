@@ -10,9 +10,9 @@ public class AppInfo {
 
 
     public String appName;
-    public String pkgName;
     public Drawable appIcon;
     public Intent appIntent;
 
 
+    public int location;
 }
