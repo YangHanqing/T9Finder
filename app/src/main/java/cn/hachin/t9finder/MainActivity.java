@@ -357,6 +357,7 @@ public class MainActivity extends Activity {
             for (String phoneNum : set) {
                 String name = mapContact2.get(phoneNum);
                 String[] pinyin = Tools.hz2py(name);
+
                 if (!pinyin[1].contains(searchBoxNum.toString()) && !pinyin[0].contains(searchBoxNum.toString())) {
                     alarmDelete.add(phoneNum);
                 }

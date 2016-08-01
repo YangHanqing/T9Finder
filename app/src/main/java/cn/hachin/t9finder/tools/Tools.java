@@ -1,6 +1,7 @@
 package cn.hachin.t9finder.tools;
 
 import android.content.Context;
+import android.util.Log;
 import android.util.TypedValue;
 
 import com.github.promeg.pinyinhelper.Pinyin;
@@ -26,6 +27,9 @@ public class Tools {
         StringBuffer py = new StringBuffer("");
         StringBuffer p = new StringBuffer("");
         //诸葛亮
+        if (name == null) {
+            return new String[]{"", ""};
+        }
         for (char c : name.toCharArray()) {//诸 葛 亮
             String pinyin;
             if (!Pinyin.isChinese(c)) {
